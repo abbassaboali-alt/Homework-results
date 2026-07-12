@@ -116,9 +116,30 @@ img, video, canvas{
 
 <script>
 function logout(){
+
   localStorage.clear();
   sessionStorage.clear();
-  location.replace("https://www.prudle-education.com/log-in-out");
+
+  /*
+    إذا كانت الصفحة داخل iframe:
+    أرسل أمر تسجيل الخروج إلى الصفحة الحاضنة.
+  */
+  if(window.parent !== window){
+
+    window.parent.postMessage(
+      "PRUDLE_LOGOUT",
+      "https://www.prudle-education.com"
+    );
+
+    return;
+  }
+
+  /*
+    إذا فُتحت صفحة GitHub مباشرة.
+  */
+  location.replace(
+    "https://www.prudle-education.com/log-in-out"
+  );
 }
 </script>
 
