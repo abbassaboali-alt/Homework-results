@@ -1,0 +1,2153 @@
+<style>
+/* =========================================================
+   PRUDLE — FULL WIDTH / FULL SCREEN + ULTRA NARROW MARGINS
+   Weebly / Caspio Safe + Mobile Friendly
+========================================================= */
+
+/* 1) الصفحة بكامل العرض بدون أي هوامش */
+html, body{
+  margin:0 !important;
+  padding:0 !important;
+  width:100% !important;
+  max-width:100% !important;
+  overflow-x:hidden !important;
+}
+
+/* 2) كل العناصر داخل الصفحة لا تكسر العرض */
+*,
+*::before,
+*::after{
+  box-sizing:border-box !important;
+}
+
+/* 3) كسر أي حاويات من القالب قد تقيد العرض */
+.container, .section, .wrapper, .content, .main-content,
+#page, #main, #body, #content,
+[class*="container"], [class*="wrapper"], [class*="content"]{
+  width:100% !important;
+  max-width:100% !important;
+  margin:0 !important;
+  padding:0 !important;
+}
+
+/* 4) هوامش داخلية عامة (تضييق الهوامش) */
+:root{
+  --gutter: 6px;          /* ✅ غيّرها 4px أو 8px حسب رغبتك */
+  --radius: 14px;
+}
+
+/* أي عنصر رئيسي في الصفحة خليه يستفيد من الـ gutter */
+body{
+  font-family:'Tajawal', sans-serif;
+  background:#f4f6fb;
+  padding:var(--gutter) !important;  /* ✅ يديك هامش صغير جدًا حول الصفحة */
+}
+
+/* 5) تقليل هوامش عناصر واجهتك (بدون ما تخرب التصميم) */
+.logout-badge,
+.header,
+.actions,
+.stats,
+.filters,
+.wrap{
+  margin:var(--gutter) !important;
+}
+
+/* 6) تحسين العرض على الجوال (هوامش أضيق + تكبير لمس) */
+@media (max-width: 768px){
+  :root{ --gutter: 4px; }
+  .header{ font-size:18px !important; }
+  .header img{ width:58px !important; height:58px !important; }
+  .btn{ padding:10px 12px !important; }
+}
+
+/* 7) الجدول: اجعله يتمدد ولا يخرج خارج الشاشة */
+table{
+  width:max-content;
+  max-width:100%;
+}
+.course-body{
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* 8) منع أي عنصر يسبب سكرول أفقي بالقوة */
+img, video, canvas{
+  max-width:100% !important;
+  height:auto !important;
+}
+</style>
+
+<!-- □ زر Logout جاهز — كود واحد فقط -->
+
+<!-- أيقونات FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+.logout-badge{
+  background:#164478;
+  color:#fff;
+  padding:7px 20px;
+  border-radius:30px;
+  border:none;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.18);
+  transition:.25s;
+}
+.logout-badge i{
+  font-size:15px;
+}
+.logout-badge:hover{
+  background:#1e5799;
+  transform:translateY(-2px);
+}
+</style>
+
+<!-- زر تسجيل الخروج -->
+<button class="logout-badge" onclick="logout()">
+  <i class="fa-solid fa-right-from-bracket"></i>
+  Logout
+</button>
+
+<script>
+function logout(){
+  localStorage.clear();
+  sessionStorage.clear();
+  location.replace("https://www.prudle-education.com/log-in-out");
+}
+</script>
+
+<script>
+// حماية الصفحات – التحقق من تسجيل الدخول
+(function(){
+
+  // لا يسمح بالدخول بدون تسجيل دخول
+  let user = localStorage.getItem("username");
+  let role = localStorage.getItem("role");
+  let last = localStorage.getItem("loginDate");
+
+  // ممنوع الدخول إذا مافي مستخدم
+  if(!user || !role){
+    location.href = "https://www.prudle-education.com/log-in-out";
+    return;
+  }
+
+  // التحقق من تاريخ آخر دخول (Auto Logout)
+  let today = new Date().toDateString();
+  if(last !== today){
+    localStorage.clear();
+    location.href = "https://www.prudle-education.com/log-in-out";
+    return;
+  }
+
+})();
+</script>
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prudle | Homework Performance Report</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+
+  <!-- PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      padding:0;
+      font-family:'Tajawal',sans-serif;
+      background:linear-gradient(180deg,#eef4ff 0%,#f7fbff 45%,#ffffff 100%);
+      color:#1f2937;
+    }
+    body{min-height:100vh}
+    .page{
+      max-width:1380px;
+      margin:auto;
+      padding:18px;
+    }
+
+    .header{
+      background:linear-gradient(135deg,#164478,#1d5ea3);
+      color:#fff;
+      border-radius:24px;
+      padding:22px;
+      box-shadow:0 14px 35px rgba(22,68,120,.18);
+      display:flex;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .header-logo{
+      width:76px;
+      height:76px;
+      background:#fff;
+      border-radius:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      box-shadow:0 8px 18px rgba(0,0,0,.12);
+      flex:0 0 auto;
+    }
+    .header-logo img{
+      width:80%;
+      height:80%;
+      object-fit:contain;
+    }
+    .header-content{
+      flex:1;
+      min-width:260px;
+    }
+    .header h1{
+      margin:0;
+      font-size:31px;
+      font-weight:900;
+    }
+    .header p{
+      margin:7px 0 0;
+      font-size:15px;
+      opacity:.95;
+      font-weight:700;
+    }
+
+    .box{
+      background:#fff;
+      border-radius:22px;
+      padding:18px;
+      margin-top:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,.06);
+      border:1px solid #edf2fb;
+    }
+
+    h2{
+      margin:0 0 14px;
+      color:#164478;
+      font-size:24px;
+      font-weight:900;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .row > *{
+      flex:1;
+      min-width:180px;
+    }
+
+    input,select,button{
+      font-family:'Tajawal',sans-serif;
+    }
+    select,input{
+      width:100%;
+      border:1px solid #d7dfeb;
+      border-radius:14px;
+      padding:13px 14px;
+      background:#fff;
+      outline:none;
+      font-size:15px;
+      transition:.18s;
+    }
+    select:focus,input:focus{
+      border-color:#9dc2f0;
+      box-shadow:0 0 0 4px rgba(29,94,163,.08);
+    }
+    button{
+      border:none;
+      border-radius:14px;
+      padding:13px 16px;
+      font-size:15px;
+      font-weight:900;
+      cursor:pointer;
+      transition:.18s;
+    }
+    button:hover{
+      transform:translateY(-1px);
+      opacity:.97;
+    }
+
+    .btn-primary{
+      background:#164478;
+      color:#fff;
+    }
+    .btn-secondary{
+      background:#eef5ff;
+      color:#164478;
+      border:1px solid #d6e7ff;
+    }
+    .btn-gold{
+      background:#f7d27c;
+      color:#111827;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .actions button{
+      min-width:180px;
+      flex:1;
+    }
+
+    .note{
+      background:#fff8e8;
+      color:#92400e;
+      border:1px solid #fde7b1;
+      padding:12px;
+      border-radius:14px;
+      margin-top:12px;
+      font-weight:700;
+    }
+
+    .empty{
+      border:1px dashed #d1d5db;
+      border-radius:14px;
+      padding:16px;
+      color:#6b7280;
+      background:#fafafa;
+      margin-top:12px;
+      text-align:center;
+      font-weight:700;
+    }
+
+    .summary-grid{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:12px;
+      margin-top:16px;
+    }
+    .summary-card{
+      background:linear-gradient(180deg,#fbfdff,#ffffff);
+      border:1px solid #dce8fb;
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 4px 10px rgba(0,0,0,.03);
+    }
+    .summary-card .label{
+      color:#6b7280;
+      font-weight:800;
+      font-size:13px;
+    }
+    .summary-card .value{
+      color:#164478;
+      font-size:28px;
+      font-weight:900;
+      margin-top:6px;
+    }
+
+    .table-wrap{
+      margin-top:18px;
+      overflow:auto;
+      border-radius:18px;
+      border:2px solid #164478;
+    }
+
+    table{
+      width:100%;
+      min-width:1250px;
+      border-collapse:collapse;
+      background:#fff;
+    }
+    thead th{
+      background:linear-gradient(135deg,#164478,#1d5ea3);
+      color:#fff;
+      font-size:14px;
+      padding:12px 10px;
+      border:1px solid #0f2f57;
+      text-align:center;
+      white-space:nowrap;
+    }
+    tbody td{
+      border:1px solid #cfd9ea;
+      padding:10px 8px;
+      text-align:center;
+      font-size:14px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    tbody tr:nth-child(even){
+      background:#f8fbff;
+    }
+    tbody tr:hover{
+      background:#eef5ff;
+    }
+
+    .pill{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+    }
+    .pill.ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+    .pill.no{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+    .pill.mid{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+    .pill.info{background:#e0ecff;color:#164478;border:1px solid #bfd7fb}
+
+    .score-good{color:#15803d;font-weight:900}
+    .score-mid{color:#b45309;font-weight:900}
+    .score-bad{color:#b91c1c;font-weight:900}
+
+    .top-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:6px;
+    }
+    .sub-text{
+      color:#6b7280;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    .footer-mini{
+      margin-top:10px;
+      color:#6b7280;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    @media(max-width:1100px){
+      .summary-grid{
+        grid-template-columns:repeat(2,1fr);
+      }
+    }
+    @media(max-width:700px){
+      .summary-grid{
+        grid-template-columns:1fr;
+      }
+      .header h1{
+        font-size:24px;
+      }
+      .header-logo{
+        width:62px;
+        height:62px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <div class="header-logo">
+      <img id="logoView" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="logo">
+    </div>
+    <div class="header-content">
+      <h1>Prudle Homework Performance Report</h1>
+      <p>تقرير تفصيلي لأداء حل الواجبات مع الدرجات المدخلة فعليًا من النتائج، وإظهار الطلاب الذين لم يحلوا</p>
+    </div>
+  </div>
+
+<div class="box">
+  <h2>الفلاتر الشاملة</h2>
+
+  <div class="row">
+
+    <div>
+      <select
+  id="fTrainer"
+  onchange="updateLinkedFilters('trainer')"
+>
+        <option value="">المدرب</option>
+      </select>
+    </div>
+
+    <div>
+      <select
+  id="fCourse"
+  onchange="updateLinkedFilters('course')"
+>
+        <option value="">الدورة</option>
+      </select>
+    </div>
+
+    <div>
+      <select
+  id="fBranch"
+  onchange="updateLinkedFilters('branch')"
+>
+        <option value="">الفرع</option>
+      </select>
+    </div>
+
+    <div>
+     <select
+  id="fSection"
+  onchange="updateLinkedFilters('section')"
+>
+        <option value="">القسم</option>
+      </select>
+    </div>
+
+    <div>
+      <select
+  id="fPeriod"
+  onchange="updateLinkedFilters('period')"
+>
+        <option value="">الفترة</option>
+      </select>
+    </div>
+
+    <div>
+     <select
+  id="fType"
+  onchange="updateLinkedFilters('type')"
+>
+        <option value="">نوع الدورة</option>
+      </select>
+    </div>
+
+    <!-- □ فلتر الواجب -->
+<div style="display:flex;gap:6px">
+
+  <select id="fHomework" style="flex:1">
+    <option value="">الواجب</option>
+  </select>
+
+  <button
+    onclick="deleteSelectedHomework()"
+    style="
+      background:#dc2626;
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:0 14px;
+      font-weight:900;
+      cursor:pointer;
+      min-width:60px;
+    "
+  >
+    حذف
+  </button>
+
+</div>
+    <div>
+      <select id="fStatus">
+        <option value="">حالة الحل</option>
+        <option value="solved">تم الحل</option>
+        <option value="not_solved">لم يحل</option>
+      </select>
+    </div>
+
+    <div>
+      <select id="fPercentRange">
+        <option value="">مستوى الأداء</option>
+        <option value="excellent">ممتاز 90% فأعلى</option>
+        <option value="good">جيد 75% - 89%</option>
+        <option value="average">متوسط 50% - 74%</option>
+        <option value="weak">ضعيف أقل من 50%</option>
+      </select>
+    </div>
+
+  </div>
+
+  <!-- □ البحث الفوري (المكان الصحيح هنا) -->
+  <div style="margin-top:12px">
+    <input id="fStudentSearch"
+           placeholder="بحث بالاسم أو رقم الهوية"
+           style="
+             width:100%;
+             border:1px solid #d7dfeb;
+             border-radius:14px;
+             padding:13px 14px;
+             font-size:15px;
+             outline:none;
+             transition:.18s;
+           "
+           onfocus="this.style.borderColor='#9dc2f0';this.style.boxShadow='0 0 0 4px rgba(29,94,163,.08)'"
+           onblur="this.style.borderColor='#d7dfeb';this.style.boxShadow='none'"
+    >
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" onclick="loadReport()">عرض التقرير</button>
+    <button class="btn-gold" onclick="exportReportPDF()">تصدير PDF</button>
+    <button class="btn-secondary" onclick="resetFilters()">إعادة تعيين</button>
+  </div>
+
+  <div class="note">
+    لن يتم عرض البيانات إلا بعد اختيار فلتر واحد على الأقل.
+  </div>
+</div>
+  <div class="box" id="summaryBox" style="display:none">
+    <div class="top-bar">
+      <h2 style="margin:0">ملخص التقرير</h2>
+      <div class="sub-text" id="reportDateText">-</div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">إجمالي السجلات</div>
+        <div class="value" id="sumTotalRows">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">تم الحل</div>
+        <div class="value" id="sumSolved">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">لم يحل</div>
+        <div class="value" id="sumNotSolved">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">متوسط النسبة</div>
+        <div class="value" id="sumAverage">0%</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">أعلى درجة</div>
+        <div class="value" id="sumHighest">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>جدول التقرير</h2>
+    <div id="reportBox" class="empty">اختر فلتر واحد على الأقل ثم اضغط "عرض التقرير"</div>
+    <div class="footer-mini">Prudle Institute</div>
+  </div>
+
+</div>
+
+<script>
+  /* ================= Firebase ================= */
+  firebase.initializeApp({
+    apiKey:"AIzaSyCCFBvZosI8dwShZjxvZzI-SU5igEbcOKk",
+    authDomain:"prudle-system.firebaseapp.com",
+    projectId:"prudle-system"
+  });
+  const db = firebase.firestore();
+
+  /* ================= Config ================= */
+  const LOGO_URL = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+let REPORT_ROWS = [];
+let LAST_FILTER_TEXT = "";
+let LAST_SUMMARY = null;
+
+/* بيانات الفلاتر المترابطة */
+let ALL_COURSES = [];
+let ALL_RESULTS = [];
+
+  /* ================= Helpers ================= */
+  function esc(str){
+    return String(str || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
+  function normalizeStatus(val){
+    return String(val || "").trim().toLowerCase();
+  }
+
+  function norm(val){
+    return String(val || "").trim();
+  }
+
+  function courseTypeNormalized(val){
+    return String(val || "").trim().toLowerCase();
+  }
+
+  function getDateText(){
+    const d = new Date();
+    return d.toLocaleString("ar-SA");
+  }
+
+  function getPercentClass(percent){
+    percent = Number(percent || 0);
+    if(percent < 50) return "score-bad";
+    if(percent < 75) return "score-mid";
+    return "score-good";
+  }
+
+  function getPercentPill(percent){
+    percent = Number(percent || 0);
+    if(percent < 50) return `<span class="pill no">${percent}%</span>`;
+    if(percent < 75) return `<span class="pill mid">${percent}%</span>`;
+    return `<span class="pill ok">${percent}%</span>`;
+  }
+
+  function fillSelect(el, values){
+    el.innerHTML = `<option value="">${el.options[0]?.text || "اختر"}</option>`;
+    values
+      .filter(v => norm(v))
+      .sort((a,b)=>String(a).localeCompare(String(b),'ar'))
+      .forEach(v=>{
+        el.innerHTML += `<option value="${esc(v)}">${esc(v)}</option>`;
+      });
+  }
+
+  function resetFilters(){
+    document.getElementById("fTrainer").value = "";
+    document.getElementById("fCourse").value = "";
+    document.getElementById("fBranch").value = "";
+    document.getElementById("fSection").value = "";
+    document.getElementById("fPeriod").value = "";
+    document.getElementById("fType").value = "";
+document.getElementById("fHomework").value = "";
+    document.getElementById("fStatus").value = "";
+    document.getElementById("fPercentRange").value = "";
+
+    REPORT_ROWS = [];
+    LAST_FILTER_TEXT = "";
+    LAST_SUMMARY = null;
+
+    document.getElementById("summaryBox").style.display = "none";
+    document.getElementById("reportBox").innerHTML = `<div class="empty">اختر فلتر واحد على الأقل ثم اضغط "عرض التقرير"</div>`;
+    updateLinkedFilters("");
+  }
+
+function hasAnyFilter(){
+
+  return !!(
+
+    document.getElementById("fTrainer").value ||
+    document.getElementById("fCourse").value ||
+    document.getElementById("fBranch").value ||
+    document.getElementById("fSection").value ||
+    document.getElementById("fPeriod").value ||
+    document.getElementById("fType").value ||
+
+    // ✅ فلتر الواجب
+    document.getElementById("fHomework").value ||
+
+    document.getElementById("fStatus").value ||
+    document.getElementById("fPercentRange").value
+
+  );
+
+}
+  function buildFilterText(){
+    const items = [];
+    const fTrainer = document.getElementById("fTrainer").value;
+    const fCourse = document.getElementById("fCourse").value;
+    const fBranch = document.getElementById("fBranch").value;
+    const fSection = document.getElementById("fSection").value;
+    const fPeriod = document.getElementById("fPeriod").value;
+    const fType = document.getElementById("fType").value;
+    const fStatus = document.getElementById("fStatus").value;
+    const fPercentRange = document.getElementById("fPercentRange").value;
+
+    if(fTrainer) items.push("المدرب: " + fTrainer);
+    if(fCourse) items.push("الدورة: " + fCourse);
+    if(fBranch) items.push("الفرع: " + fBranch);
+    if(fSection) items.push("القسم: " + fSection);
+    if(fPeriod) items.push("الفترة: " + fPeriod);
+    if(fType) items.push("نوع الدورة: " + fType);
+    if(fStatus){
+      items.push("الحالة: " + (fStatus === "solved" ? "تم الحل" : "لم يحل"));
+    }
+    if(fPercentRange){
+      const map = {
+        excellent:"ممتاز",
+        good:"جيد",
+        average:"متوسط",
+        weak:"ضعيف"
+      };
+      items.push("مستوى الأداء: " + (map[fPercentRange] || fPercentRange));
+    }
+
+    return items.length ? items.join(" | ") : "بدون فلاتر";
+  }
+
+  function checkPercentRange(percent, range){
+    percent = Number(percent || 0);
+    if(!range) return true;
+    if(range === "excellent") return percent >= 90;
+    if(range === "good") return percent >= 75 && percent < 90;
+    if(range === "average") return percent >= 50 && percent < 75;
+    if(range === "weak") return percent < 50;
+    return true;
+  }
+
+  async function imageUrlToDataUrl(url){
+    return new Promise((resolve,reject)=>{
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = function(){
+        try{
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img,0,0);
+          resolve(canvas.toDataURL("image/png"));
+        }catch(err){
+          reject(err);
+        }
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  /* ================= Load Filters ================= */
+async function loadFilters(){
+
+  try{
+
+    const [coursesSnap, resultsSnap] = await Promise.all([
+
+      db.collection("Courses")
+        .where("status","==","open")
+        .get(),
+
+      db.collection("results").get()
+
+    ]);
+
+    ALL_COURSES = [];
+    ALL_RESULTS = [];
+
+    coursesSnap.forEach(doc=>{
+
+      ALL_COURSES.push({
+        id:doc.id,
+        ...doc.data()
+      });
+
+    });
+
+    resultsSnap.forEach(doc=>{
+
+      ALL_RESULTS.push({
+        id:doc.id,
+        ...doc.data()
+      });
+
+    });
+
+    /* تحميل الفلاتر لأول مرة */
+    updateLinkedFilters("");
+
+  }catch(err){
+
+    console.error(err);
+
+    document.getElementById("reportBox").innerHTML = `
+      <div class="empty">
+        حدث خطأ أثناء تحميل الفلاتر
+      </div>
+    `;
+
+  }
+
+}
+/* =========================================================
+   الفلاتر المترابطة
+========================================================= */
+
+function uniqueSorted(values){
+
+  return [...new Set(
+    values
+      .map(v => norm(v))
+      .filter(Boolean)
+  )]
+  .sort((a,b)=>
+    String(a).localeCompare(
+      String(b),
+      "ar",
+      {numeric:true}
+    )
+  );
+
+}
+
+function getCurrentFilterValues(){
+
+  return {
+
+    trainer:
+      document.getElementById("fTrainer").value,
+
+    course:
+      document.getElementById("fCourse").value,
+
+    branch:
+      document.getElementById("fBranch").value,
+
+    section:
+      document.getElementById("fSection").value,
+
+    period:
+      document.getElementById("fPeriod").value,
+
+    type:
+      document.getElementById("fType").value,
+
+    homework:
+      document.getElementById("fHomework").value
+
+  };
+
+}
+
+function courseMatchesSelectedFilters(
+  course,
+  ignoredFilter = ""
+){
+
+  const values =
+    getCurrentFilterValues();
+
+  if(
+    ignoredFilter !== "trainer" &&
+    values.trainer &&
+    norm(course.Trainer) !== norm(values.trainer)
+  ){
+    return false;
+  }
+
+  if(
+    ignoredFilter !== "course" &&
+    values.course &&
+    norm(course.TrainingCourse) !== norm(values.course)
+  ){
+    return false;
+  }
+
+  if(
+    ignoredFilter !== "branch" &&
+    values.branch &&
+    norm(course.Branch) !== norm(values.branch)
+  ){
+    return false;
+  }
+
+  if(
+    ignoredFilter !== "section" &&
+    values.section &&
+    norm(course.Section) !== norm(values.section)
+  ){
+    return false;
+  }
+
+  if(
+    ignoredFilter !== "period" &&
+    values.period &&
+    norm(course.Period) !== norm(values.period)
+  ){
+    return false;
+  }
+
+  if(
+    ignoredFilter !== "type" &&
+    values.type &&
+    courseTypeNormalized(course.CourseType) !==
+    courseTypeNormalized(values.type)
+  ){
+    return false;
+  }
+
+  return true;
+
+}
+
+function updateSelectOptions(
+  selectId,
+  values,
+  placeholder,
+  currentValue
+){
+
+  const select =
+    document.getElementById(selectId);
+
+  const cleanValues =
+    uniqueSorted(values);
+
+  select.innerHTML =
+    `<option value="">${placeholder}</option>`;
+
+  cleanValues.forEach(value=>{
+
+    select.innerHTML += `
+      <option value="${esc(value)}">
+        ${esc(value)}
+      </option>
+    `;
+
+  });
+
+  if(
+    currentValue &&
+    cleanValues.some(value =>
+      norm(value) === norm(currentValue)
+    )
+  ){
+
+    select.value = currentValue;
+
+  }else{
+
+    select.value = "";
+
+  }
+
+}
+
+function updateLinkedFilters(changedFilter){
+
+  const oldValues =
+    getCurrentFilterValues();
+
+  /* ================= المدرب ================= */
+
+  const trainerCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "trainer"
+      )
+    );
+
+  updateSelectOptions(
+    "fTrainer",
+    trainerCourses.map(c => c.Trainer),
+    "المدرب",
+    oldValues.trainer
+  );
+
+  /* ================= الدورة ================= */
+
+  const courseCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "course"
+      )
+    );
+
+  updateSelectOptions(
+    "fCourse",
+    courseCourses.map(c => c.TrainingCourse),
+    "الدورة",
+    oldValues.course
+  );
+
+  /* ================= الفرع ================= */
+
+  const branchCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "branch"
+      )
+    );
+
+  updateSelectOptions(
+    "fBranch",
+    branchCourses.map(c => c.Branch),
+    "الفرع",
+    oldValues.branch
+  );
+
+  /* ================= القسم ================= */
+
+  const sectionCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "section"
+      )
+    );
+
+  updateSelectOptions(
+    "fSection",
+    sectionCourses.map(c => c.Section),
+    "القسم",
+    oldValues.section
+  );
+
+  /* ================= الفترة ================= */
+
+  const periodCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "period"
+      )
+    );
+
+  updateSelectOptions(
+    "fPeriod",
+    periodCourses.map(c => c.Period),
+    "الفترة",
+    oldValues.period
+  );
+
+  /* ================= نوع الدورة ================= */
+
+  const typeCourses =
+    ALL_COURSES.filter(course =>
+      courseMatchesSelectedFilters(
+        course,
+        "type"
+      )
+    );
+
+  updateSelectOptions(
+    "fType",
+    typeCourses.map(c => c.CourseType),
+    "نوع الدورة",
+    oldValues.type
+  );
+
+  /* ================= الواجب ================= */
+
+  updateHomeworkFilter(
+    oldValues.homework
+  );
+
+}
+
+function updateHomeworkFilter(
+  oldHomework = ""
+){
+
+  const matchingCourseIds =
+    new Set(
+      ALL_COURSES
+        .filter(course =>
+          courseMatchesSelectedFilters(course)
+        )
+        .map(course => course.id)
+    );
+
+  const homeworkTitles =
+    ALL_RESULTS
+      .filter(result =>
+        matchingCourseIds.has(
+          norm(result.courseId)
+        )
+      )
+      .map(result =>
+        norm(result.examTitle)
+      )
+      .filter(Boolean);
+
+  updateSelectOptions(
+    "fHomework",
+    homeworkTitles,
+    "الواجب",
+    oldHomework
+  );
+
+}
+/* ================= □ Live Search (Direct from Firestore) ================= */
+
+let SEARCH_TIMER = null;
+
+window.addEventListener("load", ()=>{
+
+  const input = document.getElementById("fStudentSearch");
+  if(!input) return;
+
+  input.addEventListener("input", ()=>{
+
+    clearTimeout(SEARCH_TIMER);
+
+    // ⏱️ debounce عشان ما يضغط على السيرفر كثير
+    SEARCH_TIMER = setTimeout(()=>{
+      liveSearchFirestore(input.value);
+    }, 400);
+
+  });
+
+});
+
+
+async function liveSearchFirestore(query){
+
+  const reportBox = document.getElementById("reportBox");
+
+  const q = String(query || "").toLowerCase().trim();
+
+  // ❗ لو فاضي → لا تعرض شيء
+  if(!q){
+    reportBox.innerHTML = `<div class="empty">اكتب اسم أو رقم هوية للبحث</div>`;
+    return;
+  }
+
+  reportBox.innerHTML = `<div class="empty">جاري البحث...</div>`;
+
+  try{
+
+    const [coursesSnap, studentsSnap, resultsSnap] = await Promise.all([
+      db.collection("Courses").get(),
+      db.collection("students").get(),
+      db.collection("results").get()
+    ]);
+
+    const coursesMap = {};
+    coursesSnap.forEach(doc=>{
+      coursesMap[doc.id] = doc.data();
+    });
+
+    let rows = [];
+
+    /* □ البحث في النتائج (الطلاب الذين حلوا) */
+    resultsSnap.forEach(doc=>{
+      const r = doc.data() || {};
+
+      const name = String(r.studentName || "").toLowerCase();
+      const iqama = String(r.studentIqama || "").toLowerCase();
+
+      if(!name.includes(q) && !iqama.includes(q)) return;
+
+      const c = coursesMap[r.courseId] || {};
+
+      rows.push({
+        studentName: r.studentName || "-",
+        studentIqama: r.studentIqama || "-",
+        courseName: c.TrainingCourse || "-",
+        trainer: c.Trainer || "-",
+        branch: c.Branch || "-",
+        section: c.Section || "-",
+        period: c.Period || "-",
+        courseType: c.CourseType || "-",
+        examTitle: r.examTitle || "-",
+        score: r.score || 0,
+        totalDegree: r.totalDegree || 0,
+        percent: r.percent || 0,
+        status: "تم الحل",
+        statusKey: "solved"
+      });
+    });
+
+    /* □ البحث في الطلاب (اللي ما حلوا) */
+    studentsSnap.forEach(doc=>{
+      const s = doc.data() || {};
+
+      const name = String(s.name || "").toLowerCase();
+      const iqama = String(s.iqama || "").toLowerCase();
+
+      if(!name.includes(q) && !iqama.includes(q)) return;
+
+      rows.push({
+        studentName: s.name || "-",
+        studentIqama: s.iqama || "-",
+        courseName: "-",
+        trainer: "-",
+        branch: "-",
+        section: "-",
+        period: "-",
+        courseType: "-",
+        examTitle: "لم يحل",
+        score: 0,
+        totalDegree: 0,
+        percent: 0,
+        status: "لم يحل",
+        statusKey: "not_solved"
+      });
+    });
+
+    if(!rows.length){
+      reportBox.innerHTML = `<div class="empty">لا توجد نتائج</div>`;
+      return;
+    }
+
+    REPORT_ROWS = rows;
+
+    renderTable(rows);
+
+  }catch(err){
+    console.error(err);
+    reportBox.innerHTML = `<div class="empty">حدث خطأ أثناء البحث</div>`;
+  }
+} /* ================= Main Report ================= */
+async function loadReport(){
+  const reportBox = document.getElementById("reportBox");
+  const summaryBox = document.getElementById("summaryBox");
+
+  if(!hasAnyFilter()){
+    summaryBox.style.display = "none";
+    reportBox.innerHTML = `<div class="empty">اختر فلتر واحد على الأقل</div>`;
+    return;
+  }
+
+  reportBox.innerHTML = `<div class="empty">جاري تحميل التقرير...</div>`;
+  summaryBox.style.display = "none";
+
+  try{
+
+    const fTrainer = document.getElementById("fTrainer").value;
+    const fCourse = document.getElementById("fCourse").value;
+    const fBranch = document.getElementById("fBranch").value;
+    const fSection = document.getElementById("fSection").value;
+    const fPeriod = document.getElementById("fPeriod").value;
+    const fType = document.getElementById("fType").value;
+    const fStatus = document.getElementById("fStatus").value;
+    const fPercentRange = document.getElementById("fPercentRange").value;
+
+    /* □ الجديد */
+    const fHomework = document.getElementById("fHomework").value;
+
+    const [coursesSnap, studentsSnap, resultsSnap] = await Promise.all([
+      db.collection("Courses").get(),
+      db.collection("students").get(),
+      db.collection("results").get()
+    ]);
+
+    const coursesMap = {};
+    const filteredCoursesMap = {};
+
+    coursesSnap.forEach(doc=>{
+      const c = doc.data() || {};
+      const item = { id:doc.id, ...c };
+
+      coursesMap[doc.id] = item;
+
+      // □ فقط الدورات المفتوحة
+      if(item.status && item.status === "closed") return;
+
+      if(fTrainer && norm(item.Trainer) !== norm(fTrainer)) return;
+      if(fCourse && norm(item.TrainingCourse) !== norm(fCourse)) return;
+      if(fBranch && norm(item.Branch) !== norm(fBranch)) return;
+      if(fSection && norm(item.Section) !== norm(fSection)) return;
+      if(fPeriod && norm(item.Period) !== norm(fPeriod)) return;
+      if(fType && courseTypeNormalized(item.CourseType) !== courseTypeNormalized(fType)) return;
+
+      filteredCoursesMap[doc.id] = item;
+    });
+
+    const resultIndex = {};
+
+    resultsSnap.forEach(doc=>{
+      const r = doc.data() || {};
+
+      if(!r.courseId || !filteredCoursesMap[r.courseId]) return;
+
+      const key = `${norm(r.studentId)}__${norm(r.courseId)}__${norm(r.examId)}`;
+      resultIndex[key] = { id:doc.id, ...r };
+    });
+
+    let rows = [];
+
+    /* ================= solved ================= */
+    Object.values(resultIndex).forEach(r=>{
+
+      const c = filteredCoursesMap[r.courseId];
+      if(!c) return;
+
+      const percent = Number(r.percent || 0);
+
+      const row = {
+        studentName: r.studentName || "-",
+        studentIqama: r.studentIqama || "-",
+        courseName: c.TrainingCourse || "-",
+        trainer: c.Trainer || "-",
+        branch: c.Branch || "-",
+        section: c.Section || "-",
+        period: c.Period || "-",
+        courseType: c.CourseType || "-",
+        examTitle: r.examTitle || "-",
+        score: Number(r.score || 0),
+        totalDegree: Number(r.totalDegree || 0),
+        percent: percent,
+        status: "تم الحل",
+        statusKey: "solved",
+        createdAtText: r.createdAt && r.createdAt.toDate
+          ? r.createdAt.toDate().toLocaleDateString("ar-SA")
+          : "-"
+      };
+
+      /* □ فلتر الواجب */
+      if(fHomework && norm(row.examTitle) !== norm(fHomework)) return;
+
+      if(fStatus && row.statusKey !== fStatus) return;
+      if(!checkPercentRange(row.percent, fPercentRange)) return;
+
+      rows.push(row);
+    });
+
+    /* ================= not solved ================= */
+    studentsSnap.forEach(doc=>{
+
+      const s = doc.data() || {};
+      const courseId = norm(s.courseId);
+      if(!courseId) return;
+
+      const c = filteredCoursesMap[courseId];
+      if(!c) return;
+
+      const studentId = norm(doc.id);
+
+      const hasAnyResultForSameCourse = Object.values(resultIndex).some(r =>
+        norm(r.studentId) === studentId &&
+        norm(r.courseId) === courseId
+      );
+
+      if(hasAnyResultForSameCourse) return;
+
+      const row = {
+        studentName: s.name || "-",
+        studentIqama: s.iqama || "-",
+        courseName: c.TrainingCourse || "-",
+        trainer: c.Trainer || "-",
+        branch: c.Branch || "-",
+        section: c.Section || "-",
+        period: c.Period || "-",
+        courseType: c.CourseType || "-",
+        examTitle: "لم يحل الواجب",
+        score: 0,
+        totalDegree: 0,
+        percent: 0,
+        status: "لم يحل",
+        statusKey: "not_solved",
+        createdAtText: "-"
+      };
+
+      /* □ فلتر الواجب */
+      if(fHomework && norm(row.examTitle) !== norm(fHomework)) return;
+
+      if(fStatus && row.statusKey !== fStatus) return;
+      if(!checkPercentRange(row.percent, fPercentRange)) return;
+
+      rows.push(row);
+    });
+
+    /* ================= sort ================= */
+    rows.sort((a,b)=>{
+      if(a.statusKey !== b.statusKey){
+        return a.statusKey === "solved" ? -1 : 1;
+      }
+      if(Number(b.percent) !== Number(a.percent)){
+        return Number(b.percent) - Number(a.percent);
+      }
+      return String(a.studentName).localeCompare(String(b.studentName),'ar');
+    });
+
+    REPORT_ROWS = rows;
+    LAST_FILTER_TEXT = buildFilterText();
+    LAST_SUMMARY = calculateSummary(rows);
+
+    renderSummary(LAST_SUMMARY);
+    renderTable(rows);
+
+  }catch(err){
+    console.error(err);
+    document.getElementById("summaryBox").style.display = "none";
+    document.getElementById("reportBox").innerHTML =
+      `<div class="empty">حدث خطأ أثناء تحميل التقرير</div>`;
+  }
+}
+  function calculateSummary(rows){
+    const totalRows = rows.length;
+    const solvedRows = rows.filter(r => r.statusKey === "solved");
+    const solved = solvedRows.length;
+    const notSolved = rows.filter(r => r.statusKey === "not_solved").length;
+    const avg = solved ? Math.round(solvedRows.reduce((a,b)=>a + Number(b.percent || 0), 0) / solved) : 0;
+    const highest = solved ? Math.max(...solvedRows.map(r => Number(r.score || 0))) : 0;
+
+    return {
+      totalRows,
+      solved,
+      notSolved,
+      avg,
+      highest
+    };
+  }
+
+  function renderSummary(summary){
+    document.getElementById("summaryBox").style.display = "block";
+    document.getElementById("sumTotalRows").innerText = summary.totalRows;
+    document.getElementById("sumSolved").innerText = summary.solved;
+    document.getElementById("sumNotSolved").innerText = summary.notSolved;
+    document.getElementById("sumAverage").innerText = summary.avg + "%";
+    document.getElementById("sumHighest").innerText = summary.highest;
+    document.getElementById("reportDateText").innerText = "تاريخ التقرير: " + getDateText();
+  }
+
+  function renderTable(rows){
+    const reportBox = document.getElementById("reportBox");
+
+    if(!rows.length){
+      reportBox.innerHTML = `<div class="empty">لا توجد بيانات مطابقة للفلاتر المختارة</div>`;
+      return;
+    }
+
+    let html = `
+      <div class="sub-text"><b>الفلاتر المطبقة:</b> ${esc(LAST_FILTER_TEXT)}</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الطالب</th>
+              <th>رقم الهوية</th>
+              <th>الدورة</th>
+              <th>المدرب</th>
+              <th>الفرع</th>
+              <th>القسم</th>
+              <th>الفترة</th>
+              <th>نوع الدورة</th>
+              <th>الواجب</th>
+              <th>الدرجة</th>
+              <th>الإجمالي</th>
+              <th>النسبة</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    rows.forEach((r, index)=>{
+      html += `
+        <tr>
+          <td>${index + 1}</td>
+          <td>
+  <button
+    onclick="showStudentAnswers('${esc(r.studentIqama)}','${esc(r.examTitle)}')"
+    style="
+      border:none;
+      background:#164478;
+      color:#fff;
+      padding:8px 14px;
+      border-radius:10px;
+      font-weight:800;
+      cursor:pointer;
+    "
+  >
+    ${esc(r.studentName)}
+  </button>
+</td>
+          <td>${esc(r.studentIqama)}</td>
+          <td>${esc(r.courseName)}</td>
+          <td>${esc(r.trainer)}</td>
+          <td>${esc(r.branch)}</td>
+          <td>${esc(r.section)}</td>
+          <td>${esc(r.period)}</td>
+          <td>${esc(r.courseType)}</td>
+          <td>${esc(r.examTitle)}</td>
+          <td class="${getPercentClass(r.percent)}">${r.score}</td>
+          <td>${r.totalDegree}</td>
+          <td>${getPercentPill(r.percent)}</td>
+          <td>${r.statusKey === "solved" ? `<span class="pill ok">تم الحل</span>` : `<span class="pill no">لم يحل</span>`}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    reportBox.innerHTML = html;
+  }
+function convertTypeToEN(type){
+
+  const t = String(type || "").toLowerCase();
+
+  // □ Online
+  if(t.includes("online") || t.includes("أونلاين") || t.includes("remote")){
+    return "Online";
+  }
+
+  // □ In-Person (بدل Offline)
+  if(t.includes("offline") || t.includes("حضوري") || t.includes("onsite")){
+    return "In-Person";
+  }
+
+  // □ Hybrid
+  if(t.includes("hybrid") || t.includes("مزدوج")){
+    return "Hybrid";
+  }
+
+  return type || "-";
+}
+  /* ================= PDF Export ================= */
+async function exportReportPDF(){
+
+  if(!REPORT_ROWS.length){
+    alert("Load report first");
+    return;
+  }
+
+  try{
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    /* ===== Build Filters EN ===== */
+    function buildFilterTextEN(){
+
+      const fTrainer = document.getElementById("fTrainer").value;
+      const fCourse  = document.getElementById("fCourse").value;
+      const fBranch  = document.getElementById("fBranch").value;
+      const fSection = document.getElementById("fSection").value;
+      const fPeriod  = document.getElementById("fPeriod").value;
+      const fType    = document.getElementById("fType").value;
+      const fStatus  = document.getElementById("fStatus").value;
+      const fPercent = document.getElementById("fPercentRange").value;
+
+      let arr = [];
+
+      if(fTrainer) arr.push("Trainer: " + fTrainer);
+      if(fCourse)  arr.push("Course: " + fCourse);
+      if(fBranch)  arr.push("Branch: " + fBranch);
+      if(fSection) arr.push("Section: " + fSection);
+      if(fPeriod)  arr.push("Period: " + fPeriod);
+      if(fType)    arr.push("Type: " + fType);
+
+      if(fStatus){
+        arr.push("Status: " + (fStatus === "solved" ? "Solved" : "Not Solved"));
+      }
+
+      if(fPercent){
+        const map = {
+          excellent:"Excellent",
+          good:"Good",
+          average:"Average",
+          weak:"Weak"
+        };
+        arr.push("Level: " + map[fPercent]);
+      }
+
+      return arr.join(" | ") || "No Filters";
+    }
+
+    /* ===== Background ===== */
+    doc.setFillColor(248,251,255);
+    doc.rect(0,0,pageWidth,pageHeight,"F");
+
+    /* ===== Outer Border ===== */
+    doc.setDrawColor(22,68,120);
+    doc.setLineWidth(1.2);
+    doc.rect(6,6,pageWidth-12,pageHeight-12);
+
+    /* ===== Header ===== */
+    doc.setFillColor(22,68,120);
+    doc.roundedRect(8,8,pageWidth-16,26,3,3,"F");
+
+    /* ===== Logo ===== */
+    try{
+      const logoData = await imageUrlToDataUrl(LOGO_URL);
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(11,11,18,18,2,2,"F");
+      doc.addImage(logoData,"PNG",13,13,14,14);
+    }catch(e){}
+
+    /* ===== Title ===== */
+    doc.setTextColor(255,255,255);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(18);
+    doc.text("Homework Performance Report", pageWidth/2,18,{align:"center"});
+
+    doc.setFontSize(10);
+    doc.text("Based on actual stored results (no recalculation)", pageWidth/2,25,{align:"center"});
+
+    /* ===== Filters ===== */
+    doc.setTextColor(30,41,59);
+    doc.setFontSize(9);
+
+    doc.text("Filters: " + buildFilterTextEN(), pageWidth-10,40,{
+      align:"right",
+      maxWidth:pageWidth-20
+    });
+
+    const now = new Date();
+
+const formattedDate = 
+  now.getFullYear() + "/" +
+  String(now.getMonth() + 1).padStart(2,"0") + "/" +
+  String(now.getDate()).padStart(2,"0") +
+  "  " +
+  String(now.getHours()).padStart(2,"0") + ":" +
+  String(now.getMinutes()).padStart(2,"0");
+
+doc.text("Date: " + formattedDate, 10, 40);
+
+    /* ===== Summary ===== */
+    const statsY = 46;
+    const cardW = (pageWidth - 28) / 5;
+
+    const cards = [
+      {label:"Total Rows", value: LAST_SUMMARY.totalRows},
+      {label:"Solved", value: LAST_SUMMARY.solved},
+      {label:"Not Solved", value: LAST_SUMMARY.notSolved},
+      {label:"Average %", value: LAST_SUMMARY.avg + "%"},
+      {label:"Highest Score", value: LAST_SUMMARY.highest}
+    ];
+
+    cards.forEach((c,i)=>{
+      const x = 8 + (i * cardW);
+
+      doc.setFillColor(255,255,255);
+      doc.setDrawColor(191,215,251);
+      doc.roundedRect(x,statsY,cardW-2,18,2,2,"FD");
+
+      doc.setTextColor(100,116,139);
+      doc.setFontSize(8);
+      doc.text(c.label, x+(cardW-2)/2, statsY+6,{align:"center"});
+
+      doc.setTextColor(22,68,120);
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(13);
+      doc.text(String(c.value), x+(cardW-2)/2, statsY+13,{align:"center"});
+    });
+
+    /* ===== Table Data ===== */
+const body = REPORT_ROWS.map((r,i)=>[
+  i+1,
+  r.studentName,
+  r.studentIqama,
+  r.courseName,
+  r.trainer,
+  r.branch,
+  r.section,
+  r.period,
+  convertTypeToEN(r.courseType),
+  r.examTitle,
+  r.score,
+  r.totalDegree,
+  r.percent + "%",
+  r.statusKey === "solved" ? "Finish" : "Not Completed"
+]);
+    doc.autoTable({
+      startY:70,
+      head:[[
+        "#",
+        "Student",
+        "Id",
+        "Course",
+        "Trainer",
+        "Branch",
+        "Section",
+        "Period",
+        "Type",
+        "Homework",
+        "Score",
+        "Total",
+        "Percent",
+        "Status"
+      ]],
+      body,
+      theme:"grid",
+      margin:{left:8,right:8},
+
+      styles:{
+        font:"helvetica",
+        fontSize:7.5,
+        cellPadding:2,
+        halign:"center"
+      },
+
+      headStyles:{
+        fillColor:[22,68,120],
+        textColor:[255,255,255],
+        fontStyle:"bold"
+      },
+
+      alternateRowStyles:{
+        fillColor:[248,251,255]
+      },
+
+      didParseCell:function(data){
+
+        if(data.section === "body"){
+
+          const row = REPORT_ROWS[data.row.index];
+
+          if(data.column.index === 12){
+            const p = Number(row.percent || 0);
+
+            if(p < 50) data.cell.styles.textColor = [185,28,28];
+            else if(p < 75) data.cell.styles.textColor = [180,83,9];
+            else data.cell.styles.textColor = [21,128,61];
+
+            data.cell.styles.fontStyle = "bold";
+          }
+
+          if(data.column.index === 13){
+
+            if(row.status === "لم يحل"){
+              data.cell.styles.fillColor = [254,226,226];
+              data.cell.styles.textColor = [153,27,27];
+            }else{
+              data.cell.styles.fillColor = [220,252,231];
+              data.cell.styles.textColor = [22,101,52];
+            }
+
+            data.cell.styles.fontStyle = "bold";
+          }
+        }
+      },
+
+      didDrawPage:function(){
+
+        doc.setFontSize(9);
+        doc.setTextColor(100,116,139);
+
+        doc.text("Prudle Institute", pageWidth/2, pageHeight-8,{align:"center"});
+        doc.text("Page " + doc.internal.getNumberOfPages(), pageWidth-12, pageHeight-8,{align:"right"});
+
+        doc.setDrawColor(22,68,120);
+        doc.setLineWidth(0.5);
+        doc.rect(6,6,pageWidth-12,pageHeight-12);
+      }
+    });
+
+    doc.save("Homework_Report_EN.pdf");
+
+  }catch(err){
+    console.error(err);
+    alert("Error generating PDF");
+  }
+}
+async function showStudentAnswers(iqama, examTitle){
+
+  const box = document.getElementById("answersContent");
+
+  document.getElementById("answersModal").style.display = "block";
+
+  box.innerHTML = `
+    <div class="empty">
+      جاري تحميل الإجابات...
+    </div>
+  `;
+
+  try{
+
+    const snap = await db.collection("results")
+      .where("studentIqama","==",iqama)
+      .where("examTitle","==",examTitle)
+      .limit(1)
+      .get();
+
+    if(snap.empty){
+
+      box.innerHTML = `
+        <div class="empty">
+          لا توجد إجابات
+        </div>
+      `;
+
+      return;
+    }
+
+    const data = snap.docs[0].data();
+
+    const details = data.details || [];
+
+    let html = "";
+
+    details.forEach((d,index)=>{
+
+      html += `
+        <div style="
+          border:1px solid #dbe4f0;
+          border-radius:16px;
+          padding:16px;
+          margin-bottom:14px;
+          background:#fff;
+        ">
+
+          <div style="
+            font-weight:900;
+            color:#164478;
+            margin-bottom:10px;
+            direction:ltr;
+            text-align:left;
+          ">
+            ${index + 1}) ${esc(d.question || "-")}
+          </div>
+      `;
+
+      /* ================= VOICE ================= */
+      if(d.type === "voice"){
+
+        if(d.studentAnswer){
+
+          html += `
+
+            <div style="margin-top:12px">
+
+              <audio
+                controls
+                style="width:100%"
+                src="${d.studentAnswer}">
+              </audio>
+
+            </div>
+          `;
+        }
+
+        else{
+
+          html += `
+            <div style="color:red;font-weight:800">
+              لم يتم تسجيل صوت
+            </div>
+          `;
+        }
+      }
+
+      /* ================= TEXT ================= */
+      else if(d.type === "text"){
+
+        html += `
+          <div style="margin-top:10px">
+            <b>إجابة الطالب:</b>
+
+            <div style="
+              background:#f8fafc;
+              padding:12px;
+              border-radius:10px;
+              margin-top:6px;
+            ">
+              ${esc(d.studentAnswer || "-")}
+            </div>
+          </div>
+        `;
+      }
+
+      /* ================= MCQ ================= */
+      else if(d.type === "mcq"){
+
+        (d.options || []).forEach((op,i)=>{
+
+          const correct =
+            Number(i) === Number(d.correctAnswer);
+
+          const selected =
+            Number(i) === Number(d.studentAnswer);
+
+          let bg = "#fff";
+
+          if(correct) bg = "#dcfce7";
+          if(selected && !correct) bg = "#fee2e2";
+
+          html += `
+            <div style="
+              padding:10px;
+              border-radius:10px;
+              margin-top:6px;
+              background:${bg};
+              border:1px solid #dbe4f0;
+              direction:ltr;
+              text-align:left;
+            ">
+              ${esc(op)}
+            </div>
+          `;
+        });
+      }
+
+      /* ================= ORDER ================= */
+      else if(d.type === "order"){
+
+        html += `
+          <div style="
+            margin-top:10px;
+            direction:ltr;
+            background:#f8fafc;
+            padding:12px;
+            border-radius:10px;
+          ">
+            ${JSON.stringify(d.studentAnswer || {})}
+          </div>
+        `;
+      }
+
+      /* ================= MATCH ================= */
+      else if(d.type === "match"){
+
+        const pairs = d.correctAnswer || [];
+
+        pairs.forEach((p,i)=>{
+
+          html += `
+            <div style="
+              background:#f8fafc;
+              padding:10px;
+              border-radius:10px;
+              margin-top:6px;
+            ">
+              ${esc(p.left)}
+              →
+              ${esc(d.studentAnswer?.[i] || "-")}
+            </div>
+          `;
+        });
+      }
+
+      html += `</div>`;
+    });
+
+    box.innerHTML = html;
+
+  }catch(err){
+
+    console.error(err);
+
+    box.innerHTML = `
+      <div class="empty">
+        حدث خطأ أثناء تحميل الإجابات
+      </div>
+    `;
+  }
+}
+
+function closeAnswersModal(){
+
+  document.getElementById("answersModal").style.display = "none";
+}
+  /* ================= Start ================= */
+async function deleteSelectedHomework(){
+
+  const homework =
+    document.getElementById("fHomework").value;
+
+  if(!homework){
+
+    alert("اختر الواجب أولاً");
+    return;
+
+  }
+
+  if(
+    !confirm(
+      "سيتم حذف الواجب من الفلاتر والتقارير، هل أنت متأكد؟"
+    )
+  ){
+    return;
+  }
+
+  try{
+
+    // ✅ حذف النتائج الخاصة بالواجب
+    const resultsSnap = await db.collection("results")
+      .where("examTitle","==",homework)
+      .get();
+
+    for(const doc of resultsSnap.docs){
+
+      await db.collection("results")
+        .doc(doc.id)
+        .delete();
+
+    }
+
+    // ✅ حذف الاختبارات المرتبطة
+    const examsSnap = await db.collection("exams")
+      .where("title","==",homework)
+      .get();
+
+    for(const doc of examsSnap.docs){
+
+      await db.collection("exams")
+        .doc(doc.id)
+        .delete();
+
+    }
+
+    alert("✅ تم حذف الواجب");
+
+    // ✅ إعادة تحميل الفلاتر
+    await loadFilters();
+
+    document.getElementById("fHomework").value = "";
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("حدث خطأ أثناء الحذف");
+
+  }
+
+}
+  loadFilters();
+</script>
+<div id="answersModal"
+  style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    z-index:99999;
+    overflow:auto;
+    padding:30px;
+  ">
+
+  <div style="
+    background:#fff;
+    max-width:1000px;
+    margin:auto;
+    border-radius:20px;
+    padding:25px;
+  ">
+
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
+    ">
+
+      <h2 style="margin:0;color:#164478">
+        إجابات الطالب
+      </h2>
+
+      <button onclick="closeAnswersModal()"
+        style="
+          background:#dc2626;
+          color:#fff;
+          border:none;
+          padding:10px 16px;
+          border-radius:10px;
+          cursor:pointer;
+          font-weight:900;
+        ">
+        إغلاق
+      </button>
+
+    </div>
+
+    <div id="answersContent"></div>
+
+  </div>
+</div>
+</body>
+</html>
+<script>
+let role = localStorage.getItem("role");
+if(role !== "admin"){
+  alert("Access Denied!");
+  location.href = "https://www.prudle-education.com/log-in-out";
+}
+</script>
+
