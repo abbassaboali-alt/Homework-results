@@ -218,11 +218,12 @@ function logout(){
       color:#1f2937;
     }
     body{min-height:100vh}
-    .page{
-      max-width:1380px;
-      margin:auto;
-      padding:18px;
-    }
+ .page{
+  width:100% !important;
+  max-width:none !important;
+  margin:0 !important;
+  padding:8px !important;
+}
 
     .header{
       background:linear-gradient(135deg,#164478,#1d5ea3);
@@ -396,36 +397,86 @@ function logout(){
       margin-top:6px;
     }
 
-    .table-wrap{
-      margin-top:18px;
-      overflow:auto;
-      border-radius:18px;
-      border:2px solid #164478;
-    }
+.table-wrap{
+  width:100%;
+  max-width:100%;
+  margin-top:18px;
+  overflow-x:auto;
+  overflow-y:visible;
+  border-radius:18px;
+  border:2px solid #164478;
+  -webkit-overflow-scrolling:touch;
+}
 
-    table{
-      width:100%;
-      min-width:1250px;
-      border-collapse:collapse;
-      background:#fff;
-    }
-    thead th{
-      background:linear-gradient(135deg,#164478,#1d5ea3);
-      color:#fff;
-      font-size:14px;
-      padding:12px 10px;
-      border:1px solid #0f2f57;
-      text-align:center;
-      white-space:nowrap;
-    }
-    tbody td{
-      border:1px solid #cfd9ea;
-      padding:10px 8px;
-      text-align:center;
-      font-size:14px;
-      font-weight:700;
-      white-space:nowrap;
-    }
+.table-wrap table{
+  width:100%;
+  min-width:1750px;
+  border-collapse:collapse;
+  background:#fff;
+  table-layout:auto;
+}
+thead th{
+  background:linear-gradient(135deg,#164478,#1d5ea3);
+  color:#fff;
+  font-size:14px;
+  padding:13px 14px;
+  border:1px solid #0f2f57;
+  text-align:center;
+  white-space:nowrap;
+  min-width:90px;
+}
+
+tbody td{
+  border:1px solid #cfd9ea;
+  padding:12px 14px;
+  text-align:center;
+  font-size:14px;
+  font-weight:700;
+  white-space:nowrap;
+  min-width:90px;
+}
+/* عرض أكبر لأعمدة التفاصيل المهمة */
+thead th:nth-child(2),
+tbody td:nth-child(2){
+  min-width:190px;
+}
+
+thead th:nth-child(4),
+tbody td:nth-child(4){
+  min-width:135px;
+}
+
+thead th:nth-child(5),
+tbody td:nth-child(5){
+  min-width:180px;
+}
+
+thead th:nth-child(6),
+tbody td:nth-child(6){
+  min-width:160px;
+}
+
+thead th:nth-child(9),
+tbody td:nth-child(9){
+  min-width:150px;
+}
+
+thead th:nth-child(10),
+tbody td:nth-child(10){
+  min-width:130px;
+}
+
+thead th:nth-child(11),
+tbody td:nth-child(11){
+  min-width:220px;
+  white-space:normal;
+  line-height:1.6;
+}
+
+thead th:nth-child(16),
+tbody td:nth-child(16){
+  min-width:145px;
+}
     tbody tr:nth-child(even){
       background:#f8fbff;
     }
