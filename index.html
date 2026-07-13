@@ -1029,13 +1029,7 @@ async function loadFilters(){
 
 ]);
 
-      db.collection("Courses")
-        .where("status","==","open")
-        .get(),
 
-      db.collection("results").get()
-
-    ]);
 
     ALL_COURSES = [];
     ALL_RESULTS = [];
@@ -1400,13 +1394,19 @@ const homeworkTitles = [
   ...resultHomeworkTitles,
   ...examHomeworkTitles
 ];
+updateSelectOptions(
+  "fHomework",
+  homeworkTitles,
+  "الواجب",
+  oldHomework
+);
+
+}window.addEventListener(
+  "load",
+  function(){
 /* =========================================
    البحث داخل التقرير المعروض
 ========================================= */
-
-window.addEventListener(
-  "load",
-  function(){
 
     const input =
       document.getElementById(
