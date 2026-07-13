@@ -2007,7 +2007,35 @@ studentsSnap.forEach(doc=>{
   }
 
   function renderTable(rows){
-    const reportBox = document.getElementById("reportBox");
+
+  const reportBox =
+    document.getElementById("reportBox");
+
+  /*
+    مهم جدًا:
+    حفظ الصفوف المعروضة حاليًا، حتى يعمل زر واتساب
+    بشكل صحيح بعد الفلترة أو البحث.
+  */
+  DISPLAYED_ROWS =
+    Array.isArray(rows)
+      ? [...rows]
+      : [];
+
+  if(!DISPLAYED_ROWS.length){
+
+    reportBox.innerHTML = `
+      <div class="empty">
+        لا توجد بيانات مطابقة للفلاتر المختارة
+      </div>
+    `;
+
+    return;
+  }
+
+  /*
+    استخدم الصفوف المحفوظة في إنشاء الجدول.
+  */
+  rows = DISPLAYED_ROWS;
 
     if(!rows.length){
       reportBox.innerHTML = `<div class="empty">لا توجد بيانات مطابقة للفلاتر المختارة</div>`;
