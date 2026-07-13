@@ -826,8 +826,8 @@ https://www.prudle-education.com/log-in-out
 
 function sendHomeworkWhatsApp(rowIndex){
 
-const row =
-  DISPLAYED_ROWS[rowIndex];
+  const row =
+    DISPLAYED_ROWS[rowIndex];
 
   if(!row){
 
@@ -855,16 +855,46 @@ const row =
   const message =
     buildHomeworkWhatsAppMessage(row);
 
-  const whatsappUrl =
-    "https://wa.me/" +
-    phone +
-    "?text=" +
+  const encodedMessage =
     encodeURIComponent(message);
 
+  const isMobile =
+    /Android|iPhone|iPad|iPod/i.test(
+      navigator.userAgent
+    );
+
+  /*
+    الجوال:
+    فتح تطبيق واتساب مباشرة داخل المحادثة.
+  */
+  if(isMobile){
+
+    const mobileUrl =
+      "whatsapp://send?phone=" +
+      phone +
+      "&text=" +
+      encodedMessage;
+
+    window.top.location.href =
+      mobileUrl;
+
+    return;
+
+  }
+
+  /*
+    الكمبيوتر:
+    فتح WhatsApp Web مباشرة على المحادثة.
+  */
+  const webUrl =
+    "https://web.whatsapp.com/send?phone=" +
+    phone +
+    "&text=" +
+    encodedMessage;
+
   window.open(
-    whatsappUrl,
-    "_blank",
-    "noopener,noreferrer"
+    webUrl,
+    "_blank"
   );
 
 }
