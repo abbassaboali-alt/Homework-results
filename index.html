@@ -76,6 +76,52 @@ img, video, canvas{
   max-width:100% !important;
   height:auto !important;
 }
+/* =========================================
+   زر إشعار واتساب
+========================================= */
+
+.whatsapp-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+
+  background:#25d366;
+  color:#fff;
+
+  border:none;
+  border-radius:10px;
+
+  padding:9px 13px;
+
+  font-family:'Tajawal',sans-serif;
+  font-size:13px;
+  font-weight:900;
+
+  cursor:pointer;
+  white-space:nowrap;
+
+  transition:.2s;
+}
+
+.whatsapp-btn:hover{
+  background:#1ebe5d;
+  transform:translateY(-1px);
+}
+
+.whatsapp-btn:active{
+  transform:scale(.97);
+}
+
+.whatsapp-btn.no-phone{
+  background:#94a3b8;
+  cursor:not-allowed;
+}
+
+.phone-cell{
+  direction:ltr;
+  text-align:center;
+}
 </style>
 
 <!-- □ زر Logout جاهز — كود واحد فقط -->
@@ -638,13 +684,14 @@ function logout(){
   /* ================= Config ================= */
   const LOGO_URL = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
 let REPORT_ROWS = [];
+let DISPLAYED_ROWS = [];
 let LAST_FILTER_TEXT = "";
 let LAST_SUMMARY = null;
 
 /* بيانات الفلاتر المترابطة */
 let ALL_COURSES = [];
 let ALL_RESULTS = [];
-
+let ALL_EXAMS = [];
   /* ================= Helpers ================= */
   function esc(str){
     return String(str || "")
@@ -666,7 +713,161 @@ let ALL_RESULTS = [];
   function courseTypeNormalized(val){
     return String(val || "").trim().toLowerCase();
   }
+/* =========================================
+   بيانات الطالب والواتساب
+========================================= */
 
+function getStudentPhone(student){
+
+  return String(
+
+    student.phone ||
+    student.mobile ||
+    student.Phone ||
+    student.Mobile ||
+    student.studentPhone ||
+    student.StudentPhone ||
+    student.phoneNumber ||
+    student.whatsapp ||
+    ""
+
+  ).trim();
+
+}
+
+
+function normalizeWhatsAppPhone(phone){
+
+  let value =
+    String(phone || "")
+      .replace(/[^\d]/g, "");
+
+  if(!value){
+    return "";
+  }
+
+  /*
+    009665xxxxxxxx
+    إلى:
+    9665xxxxxxxx
+  */
+  if(value.startsWith("00966")){
+    value = value.substring(2);
+  }
+
+  /*
+    الرقم جاهز بصيغة دولية.
+  */
+  if(value.startsWith("966")){
+    return value;
+  }
+
+  /*
+    05xxxxxxxx
+    إلى:
+    9665xxxxxxxx
+  */
+  if(
+    value.startsWith("05") &&
+    value.length === 10
+  ){
+    return "966" + value.substring(1);
+  }
+
+  /*
+    5xxxxxxxx
+    إلى:
+    9665xxxxxxxx
+  */
+  if(
+    value.startsWith("5") &&
+    value.length === 9
+  ){
+    return "966" + value;
+  }
+
+  return value;
+
+}
+
+
+function buildHomeworkWhatsAppMessage(row){
+
+  const studentName =
+    row.studentName &&
+    row.studentName !== "-"
+      ? row.studentName
+      : "الطالب";
+
+  const homeworkName =
+    row.examTitle &&
+    row.examTitle !== "-"
+      ? row.examTitle
+      : "الواجب المرسل";
+
+  return `عزيزي الطالب ${studentName}
+
+نرجو منكم حل الواجب المرسل إليكم بعنوان:
+
+${homeworkName}
+
+وذلك من خلال الدخول على الرابط أدناه:
+
+https://www.prudle-education.com/log-in-out
+
+ثم إدخال رقم الهوية، واستخدام آخر 4 أرقام من رقم الهوية ككلمة مرور، وبعد تسجيل الدخول انتقل إلى خانة الواجبات ثم قم بحل الواجب.
+
+تمنياتنا لكم بدوام التوفيق.
+
+معهد برودل للغات`;
+
+}
+
+
+function sendHomeworkWhatsApp(rowIndex){
+
+const row =
+  DISPLAYED_ROWS[rowIndex];
+
+  if(!row){
+
+    alert("تعذر العثور على بيانات الطالب");
+    return;
+
+  }
+
+  const phone =
+    normalizeWhatsAppPhone(
+      row.studentPhone
+    );
+
+  if(!phone){
+
+    alert(
+      "لا يوجد رقم جوال مسجل للطالب: " +
+      row.studentName
+    );
+
+    return;
+
+  }
+
+  const message =
+    buildHomeworkWhatsAppMessage(row);
+
+  const whatsappUrl =
+    "https://wa.me/" +
+    phone +
+    "?text=" +
+    encodeURIComponent(message);
+
+  window.open(
+    whatsappUrl,
+    "_blank",
+    "noopener,noreferrer"
+  );
+
+}
   function getDateText(){
     const d = new Date();
     return d.toLocaleString("ar-SA");
@@ -706,7 +907,7 @@ let ALL_RESULTS = [];
 document.getElementById("fHomework").value = "";
     document.getElementById("fStatus").value = "";
     document.getElementById("fPercentRange").value = "";
-
+document.getElementById("fStudentSearch").value = "";
     REPORT_ROWS = [];
     LAST_FILTER_TEXT = "";
     LAST_SUMMARY = null;
@@ -744,6 +945,8 @@ function hasAnyFilter(){
     const fSection = document.getElementById("fSection").value;
     const fPeriod = document.getElementById("fPeriod").value;
     const fType = document.getElementById("fType").value;
+    const fHomework =
+  document.getElementById("fHomework").value;
     const fStatus = document.getElementById("fStatus").value;
     const fPercentRange = document.getElementById("fPercentRange").value;
 
@@ -753,6 +956,11 @@ function hasAnyFilter(){
     if(fSection) items.push("القسم: " + fSection);
     if(fPeriod) items.push("الفترة: " + fPeriod);
     if(fType) items.push("نوع الدورة: " + fType);
+    if(fHomework){
+  items.push(
+    "الواجب: " + fHomework
+  );
+}
     if(fStatus){
       items.push("الحالة: " + (fStatus === "solved" ? "تم الحل" : "لم يحل"));
     }
@@ -805,7 +1013,21 @@ async function loadFilters(){
 
   try{
 
-    const [coursesSnap, resultsSnap] = await Promise.all([
+   const [
+  coursesSnap,
+  resultsSnap,
+  examsSnap
+] = await Promise.all([
+
+  db.collection("Courses")
+    .where("status","==","open")
+    .get(),
+
+  db.collection("results").get(),
+
+  db.collection("exams").get()
+
+]);
 
       db.collection("Courses")
         .where("status","==","open")
@@ -817,7 +1039,7 @@ async function loadFilters(){
 
     ALL_COURSES = [];
     ALL_RESULTS = [];
-
+ALL_EXAMS = [];
     coursesSnap.forEach(doc=>{
 
       ALL_COURSES.push({
@@ -835,7 +1057,14 @@ async function loadFilters(){
       });
 
     });
+examsSnap.forEach(doc=>{
 
+  ALL_EXAMS.push({
+    id:doc.id,
+    ...doc.data()
+  });
+
+});
     /* تحميل الفلاتر لأول مرة */
     updateLinkedFilters("");
 
@@ -1134,148 +1363,134 @@ function updateHomeworkFilter(
         .map(course => course.id)
     );
 
-  const homeworkTitles =
-    ALL_RESULTS
-      .filter(result =>
-        matchingCourseIds.has(
-          norm(result.courseId)
-        )
+const resultHomeworkTitles =
+  ALL_RESULTS
+    .filter(result =>
+      matchingCourseIds.has(
+        norm(result.courseId)
       )
-      .map(result =>
-        norm(result.examTitle)
+    )
+    .map(result =>
+      norm(result.examTitle)
+    )
+    .filter(Boolean);
+
+const examHomeworkTitles =
+  ALL_EXAMS
+    .filter(exam => {
+
+      const courseId =
+        norm(exam.courseId);
+
+      return (
+        courseId &&
+        matchingCourseIds.has(courseId)
+      );
+
+    })
+    .map(exam =>
+      norm(
+        exam.title ||
+        exam.examTitle
       )
-      .filter(Boolean);
+    )
+    .filter(Boolean);
 
-  updateSelectOptions(
-    "fHomework",
-    homeworkTitles,
-    "الواجب",
-    oldHomework
-  );
+const homeworkTitles = [
+  ...resultHomeworkTitles,
+  ...examHomeworkTitles
+];
+/* =========================================
+   البحث داخل التقرير المعروض
+========================================= */
 
-}
-/* ================= □ Live Search (Direct from Firestore) ================= */
+window.addEventListener(
+  "load",
+  function(){
 
-let SEARCH_TIMER = null;
+    const input =
+      document.getElementById(
+        "fStudentSearch"
+      );
 
-window.addEventListener("load", ()=>{
-
-  const input = document.getElementById("fStudentSearch");
-  if(!input) return;
-
-  input.addEventListener("input", ()=>{
-
-    clearTimeout(SEARCH_TIMER);
-
-    // ⏱️ debounce عشان ما يضغط على السيرفر كثير
-    SEARCH_TIMER = setTimeout(()=>{
-      liveSearchFirestore(input.value);
-    }, 400);
-
-  });
-
-});
-
-
-async function liveSearchFirestore(query){
-
-  const reportBox = document.getElementById("reportBox");
-
-  const q = String(query || "").toLowerCase().trim();
-
-  // ❗ لو فاضي → لا تعرض شيء
-  if(!q){
-    reportBox.innerHTML = `<div class="empty">اكتب اسم أو رقم هوية للبحث</div>`;
-    return;
-  }
-
-  reportBox.innerHTML = `<div class="empty">جاري البحث...</div>`;
-
-  try{
-
-    const [coursesSnap, studentsSnap, resultsSnap] = await Promise.all([
-      db.collection("Courses").get(),
-      db.collection("students").get(),
-      db.collection("results").get()
-    ]);
-
-    const coursesMap = {};
-    coursesSnap.forEach(doc=>{
-      coursesMap[doc.id] = doc.data();
-    });
-
-    let rows = [];
-
-    /* □ البحث في النتائج (الطلاب الذين حلوا) */
-    resultsSnap.forEach(doc=>{
-      const r = doc.data() || {};
-
-      const name = String(r.studentName || "").toLowerCase();
-      const iqama = String(r.studentIqama || "").toLowerCase();
-
-      if(!name.includes(q) && !iqama.includes(q)) return;
-
-      const c = coursesMap[r.courseId] || {};
-
-      rows.push({
-        studentName: r.studentName || "-",
-        studentIqama: r.studentIqama || "-",
-        courseName: c.TrainingCourse || "-",
-        trainer: c.Trainer || "-",
-        branch: c.Branch || "-",
-        section: c.Section || "-",
-        period: c.Period || "-",
-        courseType: c.CourseType || "-",
-        examTitle: r.examTitle || "-",
-        score: r.score || 0,
-        totalDegree: r.totalDegree || 0,
-        percent: r.percent || 0,
-        status: "تم الحل",
-        statusKey: "solved"
-      });
-    });
-
-    /* □ البحث في الطلاب (اللي ما حلوا) */
-    studentsSnap.forEach(doc=>{
-      const s = doc.data() || {};
-
-      const name = String(s.name || "").toLowerCase();
-      const iqama = String(s.iqama || "").toLowerCase();
-
-      if(!name.includes(q) && !iqama.includes(q)) return;
-
-      rows.push({
-        studentName: s.name || "-",
-        studentIqama: s.iqama || "-",
-        courseName: "-",
-        trainer: "-",
-        branch: "-",
-        section: "-",
-        period: "-",
-        courseType: "-",
-        examTitle: "لم يحل",
-        score: 0,
-        totalDegree: 0,
-        percent: 0,
-        status: "لم يحل",
-        statusKey: "not_solved"
-      });
-    });
-
-    if(!rows.length){
-      reportBox.innerHTML = `<div class="empty">لا توجد نتائج</div>`;
+    if(!input){
       return;
     }
 
-    REPORT_ROWS = rows;
+    input.addEventListener(
+      "input",
+      function(){
 
-    renderTable(rows);
+        const query =
+          String(input.value || "")
+            .trim()
+            .toLowerCase();
 
-  }catch(err){
-    console.error(err);
-    reportBox.innerHTML = `<div class="empty">حدث خطأ أثناء البحث</div>`;
+        if(!REPORT_ROWS.length){
+
+          if(query){
+
+            document.getElementById(
+              "reportBox"
+            ).innerHTML = `
+              <div class="empty">
+                اعرض التقرير أولًا ثم استخدم البحث
+              </div>
+            `;
+
+          }
+
+          return;
+        }
+
+        if(!query){
+
+          renderTable(
+            REPORT_ROWS
+          );
+
+          return;
+        }
+
+        const filteredRows =
+          REPORT_ROWS.filter(row => {
+
+            const name =
+              String(
+                row.studentName || ""
+              ).toLowerCase();
+
+            const iqama =
+              String(
+                row.studentIqama || ""
+              ).toLowerCase();
+
+            const phone =
+              String(
+                row.studentPhone || ""
+              ).toLowerCase();
+
+            return (
+              name.includes(query) ||
+              iqama.includes(query) ||
+              phone.includes(query)
+            );
+
+          });
+
+        renderTable(
+          filteredRows
+        );
+
+      }
+    );
+
   }
-} /* ================= Main Report ================= */
+);
+
+
+
+ /* ================= Main Report ================= */
 async function loadReport(){
   const reportBox = document.getElementById("reportBox");
   const summaryBox = document.getElementById("summaryBox");
@@ -1330,17 +1545,100 @@ async function loadReport(){
 
       filteredCoursesMap[doc.id] = item;
     });
+/* =========================================
+   خريطة بيانات الطلاب
+========================================= */
 
+const studentsMap = {};
+
+studentsSnap.forEach(doc=>{
+
+  const s =
+    doc.data() || {};
+
+  const docId =
+    norm(doc.id);
+
+  const iqama =
+    norm(
+      s.iqama ||
+      s.studentIqama ||
+      s.studentId ||
+      doc.id
+    );
+
+  const studentItem = {
+    id:doc.id,
+    ...s
+  };
+
+  /*
+    تخزين الطالب برقم المستند.
+  */
+  if(docId){
+    studentsMap[docId] =
+      studentItem;
+  }
+
+  /*
+    تخزين الطالب برقم الهوية أيضًا.
+  */
+  if(iqama){
+    studentsMap[iqama] =
+      studentItem;
+  }
+
+});
     const resultIndex = {};
 
-    resultsSnap.forEach(doc=>{
-      const r = doc.data() || {};
+resultsSnap.forEach(doc=>{
 
-      if(!r.courseId || !filteredCoursesMap[r.courseId]) return;
+  const r =
+    doc.data() || {};
 
-      const key = `${norm(r.studentId)}__${norm(r.courseId)}__${norm(r.examId)}`;
-      resultIndex[key] = { id:doc.id, ...r };
-    });
+  const courseId =
+    norm(r.courseId);
+
+  if(
+    !courseId ||
+    !filteredCoursesMap[courseId]
+  ){
+    return;
+  }
+
+  const studentId =
+    norm(
+      r.studentId ||
+      r.studentIqama ||
+      r.iqama
+    );
+
+  /*
+    بعض النتائج القديمة قد لا تحتوي examId،
+    لذلك نستخدم عنوان الواجب كبديل.
+  */
+  const homeworkIdentity =
+    norm(
+      r.examId ||
+      r.examTitle
+    );
+
+  if(
+    !studentId ||
+    !homeworkIdentity
+  ){
+    return;
+  }
+
+  const key =
+    `${studentId}__${courseId}__${homeworkIdentity}`;
+
+  resultIndex[key] = {
+    id:doc.id,
+    ...r
+  };
+
+});
 
     let rows = [];
 
@@ -1352,26 +1650,82 @@ async function loadReport(){
 
       const percent = Number(r.percent || 0);
 
-      const row = {
-        studentName: r.studentName || "-",
-        studentIqama: r.studentIqama || "-",
-        courseName: c.TrainingCourse || "-",
-        trainer: c.Trainer || "-",
-        branch: c.Branch || "-",
-        section: c.Section || "-",
-        period: c.Period || "-",
-        courseType: c.CourseType || "-",
-        examTitle: r.examTitle || "-",
-        score: Number(r.score || 0),
-        totalDegree: Number(r.totalDegree || 0),
-        percent: percent,
-        status: "تم الحل",
-        statusKey: "solved",
-        createdAtText: r.createdAt && r.createdAt.toDate
-          ? r.createdAt.toDate().toLocaleDateString("ar-SA")
-          : "-"
-      };
+      const studentRecord =
+  studentsMap[
+    norm(
+      r.studentId ||
+      r.studentIqama ||
+      r.iqama
+    )
+  ] || {};
 
+const row = {
+
+  studentName:
+    r.studentName ||
+    studentRecord.name ||
+    studentRecord.studentName ||
+    studentRecord.fullName ||
+    "-",
+
+  studentIqama:
+    r.studentIqama ||
+    r.studentId ||
+    studentRecord.iqama ||
+    studentRecord.studentIqama ||
+    studentRecord.studentId ||
+    "-",
+
+  studentPhone:
+    getStudentPhone(studentRecord),
+
+  courseName:
+    c.TrainingCourse || "-",
+
+  trainer:
+    c.Trainer || "-",
+
+  branch:
+    c.Branch || "-",
+
+  section:
+    c.Section || "-",
+
+  period:
+    c.Period || "-",
+
+  courseType:
+    c.CourseType || "-",
+
+  examTitle:
+    r.examTitle || "-",
+
+  examId:
+    r.examId || "",
+
+  score:
+    Number(r.score || 0),
+
+  totalDegree:
+    Number(r.totalDegree || 0),
+
+  percent:
+    percent,
+
+  status:
+    "تم الحل",
+
+  statusKey:
+    "solved",
+
+  createdAtText:
+    r.createdAt &&
+    r.createdAt.toDate
+      ? r.createdAt
+          .toDate()
+          .toLocaleDateString("ar-SA")
+      : "-"
+};
       /* □ فلتر الواجب */
       if(fHomework && norm(row.examTitle) !== norm(fHomework)) return;
 
@@ -1381,51 +1735,224 @@ async function loadReport(){
       rows.push(row);
     });
 
-    /* ================= not solved ================= */
-    studentsSnap.forEach(doc=>{
+/* ================= not solved ================= */
 
-      const s = doc.data() || {};
-      const courseId = norm(s.courseId);
-      if(!courseId) return;
+studentsSnap.forEach(doc=>{
 
-      const c = filteredCoursesMap[courseId];
-      if(!c) return;
+  const s =
+    doc.data() || {};
 
-      const studentId = norm(doc.id);
+  const courseId =
+    norm(
+      s.courseId ||
+      s.CourseId ||
+      s.courseID
+    );
 
-      const hasAnyResultForSameCourse = Object.values(resultIndex).some(r =>
-        norm(r.studentId) === studentId &&
-        norm(r.courseId) === courseId
-      );
+  if(!courseId){
+    return;
+  }
 
-      if(hasAnyResultForSameCourse) return;
+  const c =
+    filteredCoursesMap[courseId];
 
-      const row = {
-        studentName: s.name || "-",
-        studentIqama: s.iqama || "-",
-        courseName: c.TrainingCourse || "-",
-        trainer: c.Trainer || "-",
-        branch: c.Branch || "-",
-        section: c.Section || "-",
-        period: c.Period || "-",
-        courseType: c.CourseType || "-",
-        examTitle: "لم يحل الواجب",
-        score: 0,
-        totalDegree: 0,
-        percent: 0,
-        status: "لم يحل",
-        statusKey: "not_solved",
-        createdAtText: "-"
-      };
+  if(!c){
+    return;
+  }
 
-      /* □ فلتر الواجب */
-      if(fHomework && norm(row.examTitle) !== norm(fHomework)) return;
+  /*
+    رقم الطالب قد يكون:
+    - رقم المستند
+    - studentId
+    - iqama
+    - studentIqama
+  */
+  const studentId =
+    norm(
+      s.studentId ||
+      s.studentID ||
+      s.iqama ||
+      s.studentIqama ||
+      doc.id
+    );
 
-      if(fStatus && row.statusKey !== fStatus) return;
-      if(!checkPercentRange(row.percent, fPercentRange)) return;
+  if(!studentId){
+    return;
+  }
 
-      rows.push(row);
-    });
+  /*
+    إذا تم اختيار واجب:
+    نفحص هل لهذا الطالب نتيجة لنفس الواجب المحدد.
+  */
+  if(fHomework){
+
+    const hasSelectedHomeworkResult =
+      Object.values(resultIndex).some(r => {
+
+        const resultStudentId =
+          norm(
+            r.studentId ||
+            r.studentIqama ||
+            r.iqama
+          );
+
+        const sameStudent =
+          resultStudentId === studentId ||
+          norm(r.studentIqama) ===
+            norm(s.iqama);
+
+        const sameCourse =
+          norm(r.courseId) ===
+          courseId;
+
+        const sameHomework =
+          norm(r.examTitle) ===
+          norm(fHomework);
+
+        return (
+          sameStudent &&
+          sameCourse &&
+          sameHomework
+        );
+
+      });
+
+    /*
+      يوجد له حل لهذا الواجب،
+      إذًا لا نضيفه إلى لم يحل.
+    */
+    if(hasSelectedHomeworkResult){
+      return;
+    }
+
+  }else{
+
+    /*
+      إذا لم يتم اختيار واجب،
+      نتحقق هل حل أي واجب في الدورة.
+    */
+    const hasAnyResultForSameCourse =
+      Object.values(resultIndex).some(r => {
+
+        const resultStudentId =
+          norm(
+            r.studentId ||
+            r.studentIqama ||
+            r.iqama
+          );
+
+        const sameStudent =
+          resultStudentId === studentId ||
+          norm(r.studentIqama) ===
+            norm(s.iqama);
+
+        const sameCourse =
+          norm(r.courseId) ===
+          courseId;
+
+        return (
+          sameStudent &&
+          sameCourse
+        );
+
+      });
+
+    if(hasAnyResultForSameCourse){
+      return;
+    }
+
+  }
+
+  const row = {
+
+    studentName:
+      s.name ||
+      s.studentName ||
+      s.fullName ||
+      "-",
+
+    studentIqama:
+      s.iqama ||
+      s.studentIqama ||
+      s.studentId ||
+      doc.id ||
+      "-",
+
+    studentPhone:
+      getStudentPhone(s),
+
+    courseName:
+      c.TrainingCourse || "-",
+
+    trainer:
+      c.Trainer || "-",
+
+    branch:
+      c.Branch || "-",
+
+    section:
+      c.Section || "-",
+
+    period:
+      c.Period || "-",
+
+    courseType:
+      c.CourseType || "-",
+
+    /*
+      مهم:
+      نضع اسم الواجب المحدد بدل "لم يحل الواجب".
+    */
+    examTitle:
+      fHomework ||
+      "لم يحل أي واجب",
+
+    examId:
+      "",
+
+    score:
+      0,
+
+    totalDegree:
+      0,
+
+    percent:
+      0,
+
+    status:
+      "لم يحل",
+
+    statusKey:
+      "not_solved",
+
+    createdAtText:
+      "-"
+  };
+
+  /*
+    لا نحتاج مقارنة examTitle بالواجب هنا؛
+    لأننا وضعنا اسم الواجب المحدد بالفعل.
+  */
+
+  if(
+    fStatus &&
+    row.statusKey !== fStatus
+  ){
+    return;
+  }
+
+  if(
+    !checkPercentRange(
+      row.percent,
+      fPercentRange
+    )
+  ){
+    return;
+  }
+
+  rows.push(row);
+
+});
 
     /* ================= sort ================= */
     rows.sort((a,b)=>{
@@ -1494,69 +2021,191 @@ async function loadReport(){
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>الطالب</th>
-              <th>رقم الهوية</th>
-              <th>الدورة</th>
-              <th>المدرب</th>
-              <th>الفرع</th>
-              <th>القسم</th>
-              <th>الفترة</th>
-              <th>نوع الدورة</th>
-              <th>الواجب</th>
-              <th>الدرجة</th>
-              <th>الإجمالي</th>
-              <th>النسبة</th>
-              <th>الحالة</th>
+       <th>#</th>
+<th>الطالب</th>
+<th>رقم الهوية</th>
+<th>رقم الجوال</th>
+<th>الدورة</th>
+<th>المدرب</th>
+<th>الفرع</th>
+<th>القسم</th>
+<th>الفترة</th>
+<th>نوع الدورة</th>
+<th>الواجب</th>
+<th>الدرجة</th>
+<th>الإجمالي</th>
+<th>النسبة</th>
+<th>الحالة</th>
+<th>إشعار واتساب</th>
             </tr>
           </thead>
           <tbody>
     `;
 
-    rows.forEach((r, index)=>{
-      html += `
-        <tr>
-          <td>${index + 1}</td>
-          <td>
-  <button
-    onclick="showStudentAnswers('${esc(r.studentIqama)}','${esc(r.examTitle)}')"
-    style="
-      border:none;
-      background:#164478;
-      color:#fff;
-      padding:8px 14px;
-      border-radius:10px;
-      font-weight:800;
-      cursor:pointer;
-    "
-  >
-    ${esc(r.studentName)}
-  </button>
-</td>
-          <td>${esc(r.studentIqama)}</td>
-          <td>${esc(r.courseName)}</td>
-          <td>${esc(r.trainer)}</td>
-          <td>${esc(r.branch)}</td>
-          <td>${esc(r.section)}</td>
-          <td>${esc(r.period)}</td>
-          <td>${esc(r.courseType)}</td>
-          <td>${esc(r.examTitle)}</td>
-          <td class="${getPercentClass(r.percent)}">${r.score}</td>
-          <td>${r.totalDegree}</td>
-          <td>${getPercentPill(r.percent)}</td>
-          <td>${r.statusKey === "solved" ? `<span class="pill ok">تم الحل</span>` : `<span class="pill no">لم يحل</span>`}</td>
-        </tr>
-      `;
-    });
+  rows.forEach((r, index)=>{
 
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
+  const hasPhone =
+    Boolean(
+      normalizeWhatsAppPhone(
+        r.studentPhone
+      )
+    );
 
-    reportBox.innerHTML = html;
-  }
+  html += `
+
+    <tr>
+
+      <td>
+        ${index + 1}
+      </td>
+
+      <td>
+
+        ${
+          r.statusKey === "solved"
+            ? `
+              <button
+                onclick="showStudentAnswers(
+                  '${esc(r.studentIqama)}',
+                  '${esc(r.examTitle)}'
+                )"
+                style="
+                  border:none;
+                  background:#164478;
+                  color:#fff;
+                  padding:8px 14px;
+                  border-radius:10px;
+                  font-weight:800;
+                  cursor:pointer;
+                "
+              >
+                ${esc(r.studentName)}
+              </button>
+            `
+            : `
+              <span style="
+                font-weight:900;
+                color:#1f2937;
+              ">
+                ${esc(r.studentName)}
+              </span>
+            `
+        }
+
+      </td>
+
+      <td>
+        ${esc(r.studentIqama)}
+      </td>
+
+      <td class="phone-cell">
+        ${esc(r.studentPhone || "-")}
+      </td>
+
+      <td>
+        ${esc(r.courseName)}
+      </td>
+
+      <td>
+        ${esc(r.trainer)}
+      </td>
+
+      <td>
+        ${esc(r.branch)}
+      </td>
+
+      <td>
+        ${esc(r.section)}
+      </td>
+
+      <td>
+        ${esc(r.period)}
+      </td>
+
+      <td>
+        ${esc(r.courseType)}
+      </td>
+
+      <td>
+        ${esc(r.examTitle)}
+      </td>
+
+      <td class="${getPercentClass(r.percent)}">
+        ${r.score}
+      </td>
+
+      <td>
+        ${r.totalDegree}
+      </td>
+
+      <td>
+        ${getPercentPill(r.percent)}
+      </td>
+
+      <td>
+
+        ${
+          r.statusKey === "solved"
+            ? `
+              <span class="pill ok">
+                تم الحل
+              </span>
+            `
+            : `
+              <span class="pill no">
+                لم يحل
+              </span>
+            `
+        }
+
+      </td>
+
+      <td>
+
+        ${
+          r.statusKey === "not_solved"
+            ? `
+              <button
+                type="button"
+                class="whatsapp-btn ${hasPhone ? "" : "no-phone"}"
+                onclick="sendHomeworkWhatsApp(${index})"
+                ${hasPhone ? "" : "disabled"}
+              >
+
+                <i class="fa-brands fa-whatsapp"></i>
+
+                ${
+                  hasPhone
+                    ? "إرسال إشعار"
+                    : "لا يوجد رقم"
+                }
+
+              </button>
+            `
+            : "-"
+        }
+
+      </td>
+
+    </tr>
+
+  `;
+
+});
+
+html += `
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+`;
+
+reportBox.innerHTML = html;
+
+}
 function convertTypeToEN(type){
 
   const t = String(type || "").toLowerCase();
@@ -1718,9 +2367,10 @@ doc.text("Date: " + formattedDate, 10, 40);
 
     /* ===== Table Data ===== */
 const body = REPORT_ROWS.map((r,i)=>[
-  i+1,
+  i + 1,
   r.studentName,
   r.studentIqama,
+  r.studentPhone || "-",
   r.courseName,
   r.trainer,
   r.branch,
@@ -1731,7 +2381,9 @@ const body = REPORT_ROWS.map((r,i)=>[
   r.score,
   r.totalDegree,
   r.percent + "%",
-  r.statusKey === "solved" ? "Finish" : "Not Completed"
+  r.statusKey === "solved"
+    ? "Finish"
+    : "Not Completed"
 ]);
     doc.autoTable({
       startY:70,
@@ -1739,6 +2391,7 @@ const body = REPORT_ROWS.map((r,i)=>[
         "#",
         "Student",
         "Id",
+        "Phone",
         "Course",
         "Trainer",
         "Branch",
@@ -1774,34 +2427,74 @@ const body = REPORT_ROWS.map((r,i)=>[
 
       didParseCell:function(data){
 
-        if(data.section === "body"){
+  if(data.section === "body"){
 
-          const row = REPORT_ROWS[data.row.index];
+    const row =
+      REPORT_ROWS[data.row.index];
 
-          if(data.column.index === 12){
-            const p = Number(row.percent || 0);
+    /*
+      عمود النسبة:
+      ترتيبه 13 لأن العد يبدأ من صفر.
+    */
+    if(data.column.index === 13){
 
-            if(p < 50) data.cell.styles.textColor = [185,28,28];
-            else if(p < 75) data.cell.styles.textColor = [180,83,9];
-            else data.cell.styles.textColor = [21,128,61];
+      const p =
+        Number(row.percent || 0);
 
-            data.cell.styles.fontStyle = "bold";
-          }
+      if(p < 50){
 
-          if(data.column.index === 13){
+        data.cell.styles.textColor =
+          [185,28,28];
 
-            if(row.status === "لم يحل"){
-              data.cell.styles.fillColor = [254,226,226];
-              data.cell.styles.textColor = [153,27,27];
-            }else{
-              data.cell.styles.fillColor = [220,252,231];
-              data.cell.styles.textColor = [22,101,52];
-            }
+      }else if(p < 75){
 
-            data.cell.styles.fontStyle = "bold";
-          }
-        }
-      },
+        data.cell.styles.textColor =
+          [180,83,9];
+
+      }else{
+
+        data.cell.styles.textColor =
+          [21,128,61];
+
+      }
+
+      data.cell.styles.fontStyle =
+        "bold";
+    }
+
+    /*
+      عمود الحالة:
+      ترتيبه 14.
+    */
+    if(data.column.index === 14){
+
+      if(
+        row.statusKey === "not_solved"
+      ){
+
+        data.cell.styles.fillColor =
+          [254,226,226];
+
+        data.cell.styles.textColor =
+          [153,27,27];
+
+      }else{
+
+        data.cell.styles.fillColor =
+          [220,252,231];
+
+        data.cell.styles.textColor =
+          [22,101,52];
+
+      }
+
+      data.cell.styles.fontStyle =
+        "bold";
+    }
+
+  }
+
+},
 
       didDrawPage:function(){
 
@@ -2045,18 +2738,7 @@ async function deleteSelectedHomework(){
 
   try{
 
-    // ✅ حذف النتائج الخاصة بالواجب
-    const resultsSnap = await db.collection("results")
-      .where("examTitle","==",homework)
-      .get();
 
-    for(const doc of resultsSnap.docs){
-
-      await db.collection("results")
-        .doc(doc.id)
-        .delete();
-
-    }
 
     // ✅ حذف الاختبارات المرتبطة
     const examsSnap = await db.collection("exams")
@@ -2140,4 +2822,3 @@ async function deleteSelectedHomework(){
 </div>
 </body>
 </html>
-
