@@ -1,0 +1,124 @@
+<!-- Prudle iframe authorization — Admin only -->
+<script>
+(function () {
+  "use strict";
+  // Same-role values are used by Prudle Unified Login and USERS.roles[].
+  const ALLOWED_ROLES = ["admin"];
+  const LOGIN_URL = "https://www.prudle-education.com/log-in-out";
+  const FRAME_URL = "https://abbassaboali-alt.github.io/Manage-Break-time/";
+  const FRAME_ORIGIN = "https://abbassaboali-alt.github.io";
+  const FRAME_ID = "prudleMissionFrame";
+
+  // This is a page-display gate only. The Worker must independently
+  // verify the Firebase token and authoritative USERS permissions.
+  const clean = value => String(value || "").trim().toLowerCase();
+  function getRoles() {
+    let list = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem("roles") || "[]");
+      if (Array.isArray(saved)) list = saved;
+    } catch (error) {
+      console.warn("Invalid roles format", error);
+    }
+    // Legacy keys are only compatibility hints, NOT authorization proof.
+    list.push(localStorage.getItem("role"), localStorage.getItem("userRole"));
+    return [...new Set(list.map(clean).filter(Boolean))];
+  }
+  function getUsername() {
+    return String(localStorage.getItem("username") ||
+                  localStorage.getItem("userName") || "").trim();
+  }
+  function allowedForPage() {
+    return getRoles().some(role => ALLOWED_ROLES.includes(role));
+  }
+  function isSessionAvailable() {
+    const uid = sessionStorage.getItem("firebaseUid") ||
+                localStorage.getItem("authUid") ||
+                localStorage.getItem("firebaseUid");
+    return Boolean(getUsername() && uid && sessionStorage.getItem("firebaseToken"));
+  }
+  function getFrame() { return document.getElementById(FRAME_ID); }
+  function showStatus(message) {
+    let status = document.getElementById("prudleAccessStatus");
+    if (!status) {
+      status = document.createElement("div");
+      status.id = "prudleAccessStatus";
+      status.setAttribute("role", "alert");
+      status.style.cssText = "padding:24px;text-align:center;font-family:Tajawal,Arial,sans-serif;color:#164478";
+      (getFrame()?.parentElement || document.body).appendChild(status);
+    }
+    status.textContent = message;
+  }
+  function sendPrudleUser() {
+    const frame = getFrame();
+    if (!frame || !frame.contentWindow || !isSessionAvailable() || !allowedForPage()) return;
+    const username = getUsername();
+    const roles = getRoles();
+    const role = clean(localStorage.getItem("role") || localStorage.getItem("userRole")) || roles[0] || "";
+    frame.contentWindow.postMessage({
+      type: "PRUDLE_USER_INFO",
+      assignedBy: username,
+      username,
+      role,
+      roles,
+      loginDate: localStorage.getItem("loginDate") || ""
+    }, FRAME_ORIGIN);
+  }
+  // Called only after the frame exists, including after page restoration.
+  window.sendPrudleUser = sendPrudleUser;
+  function verifyAndShow() {
+    const frame = getFrame();
+    if (!frame) return;
+    if (!isSessionAvailable()) {
+      frame.hidden = true;
+      frame.style.display = "none";
+      frame.removeAttribute("src");
+      // No daily loginDate condition; authentication is based on the live session.
+      window.location.replace(LOGIN_URL);
+      return;
+    }
+    if (!allowedForPage()) {
+      frame.hidden = true;
+      frame.style.display = "none";
+      frame.removeAttribute("src");
+      showStatus("ليس لديك صلاحية لفتح هذه الصفحة.");
+      return;
+    }
+    document.getElementById("prudleAccessStatus")?.remove();
+    frame.hidden = false;
+    frame.style.display = "block";
+    if (!frame.getAttribute("src")) frame.setAttribute("src", FRAME_URL);
+    else sendPrudleUser();
+  }
+
+  window.addEventListener("message", function(event) {
+    const frame = getFrame();
+    if (!frame || event.source !== frame.contentWindow || event.origin !== FRAME_ORIGIN) return;
+    const type = event.data && typeof event.data === "object" ? event.data.type : event.data;
+    if (type === "PRUDLE_REQUEST_USER" || type === "PRUDLE_REQUEST_USER_INFO") {
+      sendPrudleUser();
+    } else if (type === "PRUDLE_LOGOUT") {
+      // The actual centralized logout flow should invalidate the session server-side.
+      window.location.replace(LOGIN_URL);
+    }
+  });
+  window.addEventListener("pageshow", verifyAndShow);
+  window.addEventListener("storage", event => {
+    if (["roles", "role", "userRole", "username", "authUid", "firebaseUid"].includes(event.key)) verifyAndShow();
+  });
+  function start() {
+    const frame = getFrame();
+    if (!frame) return;
+    frame.addEventListener("load", function() {
+      sendPrudleUser();
+      setTimeout(sendPrudleUser, 500);
+    });
+    verifyAndShow();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
+  else start();
+})();
+</script>
+<iframe id="prudleMissionFrame" title="Prudle Break Manager" allow="microphone; camera"
+  referrerpolicy="strict-origin-when-cross-origin"
+  hidden style="width:100%;height:100vh;border:none;display:none"></iframe>
